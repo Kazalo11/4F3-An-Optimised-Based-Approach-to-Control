@@ -24,9 +24,9 @@ jobs:
         path: 4F3_Notes.pdf
     - name: Add artifact to Git
       run: |
-          git add 4F3_Notes.pdf
           git config --local user.email "kazoshodi@gmail.com"
           git config --local user.name "Kazal Oshodi"
+          git add 4F3_Notes.pdf
           git commit -m "Updated 4F3 Notes PDF"
 
     - name: Push changes
