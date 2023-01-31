@@ -1,0 +1,25 @@
+name: TeX Build
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up LaTeX environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y texlive-full
+
+    - name: Compile TeX file
+      run: pdflatex main.tex
+      
+    - name: Upload PDF
+      uses: actions/upload-artifact@v2
+      with:
+        name: 4F3Notes.pdf
+        path: 4F3Notes.pdf
