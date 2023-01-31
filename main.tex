@@ -158,9 +158,7 @@ The optimal cost can then be found by:
 \[
 J^*(x_0) = \min_{u_0,...,u_{h-1}} J(x_0,u_0,...,u_{h-1}) = V(x_0,0)
 \]
-The optimal input $u_k$ at each step minimises Equation \
-
-{dp1} for the current value of state $x_k$. We can also define 
+The optimal input $u_k$ at each step minimises Equation \eqref{dp1} for the current value of state $x_k$. We can also define 
 \[
 g(x,k) = \operatorname*{argmin}_u (c(x,u) + V(f(x,u),k+1))
 \]
