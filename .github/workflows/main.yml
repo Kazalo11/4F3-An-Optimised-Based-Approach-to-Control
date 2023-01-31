@@ -22,14 +22,4 @@ jobs:
       with:
         name: 4F3_Notes.pdf
         path: 4F3_Notes.pdf
-    - name: Add artifact to Git
-      run: |
-          git config --local user.email "kazoshodi@gmail.com"
-          git config --local user.name "Kazal Oshodi"
-          git add 4F3_Notes.pdf
-          git commit -m "Updated 4F3 Notes PDF"
-
-    - name: Push changes
-      uses: ad-m/github-push-action@master
-      with:
-        github_token: ${{ secrets.UPLOAD_TOKEN }}
+    
