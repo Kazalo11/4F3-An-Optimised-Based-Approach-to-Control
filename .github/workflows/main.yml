@@ -10,13 +10,12 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Set up LaTeX environment
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y texlive-full
-
     - name: Compile TeX file
-      run: pdflatex -shell-escape main.tex
+      uses: dante-ev/latex-action@latest
+      with:
+            root_file: main.tex
+            compiler: pdflatex
+            args: -interaction=nonstopmode -shell-escape
       
     - name: Upload PDF
       uses: actions/upload-artifact@v2
