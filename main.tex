@@ -18,6 +18,8 @@
 \newtheorem{theorem}{Theorem}[section]
 \newtheorem{corollary}{Corollary}[theorem]
 \newtheorem{lemma}[theorem]{Lemma}
+\newenvironment{aligndisplaymath}{\begin{displaymath}\begin{aligned}}{\end{aligned}\end{displaymath}}
+
 \title{4F3: An Optimised Based Approach to Control}
 \author{Kazal Oshodi }
 \date{January 2023}
@@ -688,6 +690,353 @@ and it can be shown that:
 \[
 ||y||_\infty = \sup_t \sqrt{y(t)^T y(t)} \leq \frac{1}{\sqrt{2 \pi}} ||T_{u \rightarrow y}||_2 ||u||_2
 \]
+\subsection{Linear Fractional Transformations}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\linewidth]{Screenshot 2023-02-02 at 11.22.37.png}
+\end{figure}
+We can use Linear Fractional Transformations (LFTs) to manipulate closed-loop transfer functions. The lower LFT $\mathcal{F}_I(P(s),K(s))$ is the closed loop transfer function from $\bar w(s)$ to $\bar z(s)$ in this diagram. Hence:
+\[
+\mathcal{F}_I(P(s),K(s)) = T_{\bar w(s) \rightarrow \bar z(s)}
+\]
+In this case, P(s) is the Generalised Plant. \\
+If P(s) has the block transfer representation:
+\[
+\begin{bmatrix}
+    \bar z(s) \\ \bar y(s)
+\end{bmatrix}
+=
+\underbrace{
+\begin{bmatrix}
+    P_{11}(s) & P_{22}(s) \\
+    P_{21}(s) & P_{22}(s)
+\end{bmatrix}}_{P(s)}
+\begin{bmatrix}
+    \bar w(s) \\ \bar u(s)
+\end{bmatrix}
+\]
+Then we can obtain that:
+\[
+\begin{aligned}
+    \bar z(s) &= P_{11}(s) \bar w(s) + P_{12}(s) \bar u(s) \\
+    \bar y(s) &= P_{21}(s) \bar w(s) + P_{22}(s) \bar u(s) \\
+    \bar u(s) &= K(s)\bar y(s) \\
+    \bar u(s) &= K(s) ( P_{21}(s) \bar w + P_{22}(s) \bar u \\
+    (1-KP_{22})\bar u &= KP_{21}\bar w \\
+    \bar u &= (I - KP_{22})^{-1}KP_{21} \bar w \\
+    \bar z &= P_{11} \bar w + P_{21} \bar u \\
+    &= \left( P_{11} + P_{12}(I-KP_{22})^{-1} KP_{21}\right) \bar w \\
+    &= \underbrace{\left(P_{11} + P_{21}K(I-KP_{22})^{-1}P_{21} \right)}_{\mathcal{F}_I (P(s),K(s))} \bar w
+\end{aligned}
+\]
+Thus, the overall result is that:
+\[
+\bar z(s) = \mathcal{F}_I (P(s), K(s)) \bar w(s)
+\]
+Where
+\[
+\mathcal{F}_I(P(s),K(s)) = P_{11}(s) + P_{12}(s)K(s)(I-P_{22}(s)K(s))^{-1}P_{21}(s)
+\]
+We thus want to make $\mathcal{F}_I(P(s),K(s))$ small using stablising controllers $K(s)$ to reduce the $H_2$ norm of the system.
+\subsection{\texorpdfstring{$\mathcal{H}_2$}. optimal control - state-feedback (a special case)}
+If we let the generalised plant P have realisation
+\[
+\begin{aligned}
+    \dot x &= Ax + B_1 w + B_2 u \\
+    z &= \begin{bmatrix}
+        C_1 x \\ u
+    \end{bmatrix} \\
+    y &= u \; \text{(state feedback)}
+\end{aligned}
+\]
+This can be written in matrix form as:
+\[
+\begin{bmatrix}
+    \dot x \\ z \\ y 
+\end{bmatrix}
+= \begin{bmatrix}
+    A & B_1 & B_2 \\ \begin{bmatrix}
+        C_1 \\ 0
+    \end{bmatrix}
+    & 0 &
+    \begin{bmatrix}
+        0 \\ I
+    \end{bmatrix} \\
+    I & 0 & 0
+\end{bmatrix}
+\begin{bmatrix}
+    x \\ w \\ u
+\end{bmatrix}
+\]
+Where we also assume that $(A,B_2)$ is controllable, and $(A,C_1)$ is observable.
+\subsubsection*{Objective}
+We want to find a K(s) which achieves:
+\[
+\min_{\text{K(s) stabilising}} = \underbrace{||\mathcal{F}_I (P(s),K(s))||_2^2}_{T_{w \rightarrow z}} = \min_{\text{K(s) stabilising}} 2 \pi \sum_i || z(t)|_{w(t) = e_i \delta(t)}||_2^2
+\]
+Where $e_i \delta(t)$, means that the state is applied at the ith input, so $e_i$ is:
+\[
+\begin{bmatrix}
+    0 \\ \vdots  \\ 1 \\ \vdots \\ 0
+\end{bmatrix}
+\]
+\subsubsection*{Solution}
+From the LQR problem, we know that if $x(0)=x_0 \neq 0$, $w(t) = 0$, then:
+\[
+||z||_2^2 = x_0^TXx_0 + ||(u+B_2^TXx)||_2^2
+\]
+where $X = X^T$ is the stabilising solution to the CARE problem \eqref{care}
+\[
+0 = XA+A^TX +C_1^TC_1 - XB_2B_2^TX
+\]
+which is the unique solution for $A-B_2B_2^TX$ is stable. \\
+If consider the situation where $x(0^{-1}) = 0$ and $w(t) = e_i \delta (t)$. This is equal to when $x(0^+) = B_1e_i, w(t) = 0$.  \\ Then:
+\[
+\left| \left| z(t)_{w(t) = e_i \delta(t)} \right| \right|_2^2 = e_i^TB_1^TXB_1e_i + \left| \left| (u+B_2^TXx)|_{x(0^+) = B_1 e_i} \right| \right|_2^2
+\]
+again $X=X^T$ is the stabilising solution of the same CARE. \\
+If we define:
+\[
+v(t) = u(t) + B_2^T Xx(t)
+\]
+Then if $T_{w \rightarrow v}$ is the closed loop transfer function from w to v:
+\[
+\frac{1}{2\pi} ||T_{w \rightarrow v}||_2^2 = \sum_i ||v(t)_{w(t) = e_i \delta(t)}||_2^2 = \sum_i\left| \left| (u+B_2^TXx)|_{x(0^+) = B_1 e_i} \right| \right|_2^2
+\]
+Therefore:
+\[
+\frac{1}{2 \pi} ||\mathcal{F}_I(P(s),K(s))||_2^2 = \text{trace}(B_1^TXB_1) + \frac{1}{2 \pi}|| T_{w \rightarrow \underbrace{u + B_2^TXx}_{v}}||_2^2
+\]
+We can make $T_{w \rightarrow v} = 0$ by choosing 
+\[
+\bar u (s) = -B_2^T X \bar x(s)
+\]
+which is the same as choosing $K(s) = -B_2^T X$, where X is the solution of Riccati's equation \eqref{dare}
+\subsubsection*{Summary}
+\[
+\min_{\text{K(s) stabilising}} ||\mathcal{F}_I(P(s),K(s))||_2 = \sqrt{2 \pi} \sqrt{\text{trace}(B_1^TXB_1)}
+\]
+Which is achieved by constant feedback gain $K = -B_2^TX$, and K(s) is stabilising by properties of CARE \eqref{care}
+\subsection{\texorpdfstring{$\mathcal{H}_2$}. optimal control - output feedback}
+For this, we don't know the full state vector x. Hence the generalised plant P is now:
+\[
+\begin{aligned}
+\dot x &= Ax + B_1 w_1 + B_2 u_2 \\
+z &= \begin{bmatrix}
+    C_1 x \\ u
+\end{bmatrix} \\
+y &= C_2 x + w_2 \\ 
+\begin{bmatrix}
+    \dot x \\ z \\ y
+\end{bmatrix}
+&= \begin{bmatrix}
+    A & \begin{bmatrix}
+        B_1 & 0
+    \end{bmatrix}
+    & 
+    B_2 \\
+    \begin{bmatrix}
+        C_1 \\ 0
+    \end{bmatrix}
+    & 0 & \begin{bmatrix}
+        0 \\ I
+    \end{bmatrix} \\
+    C_2 & \begin{bmatrix}
+        0 & I
+    \end{bmatrix}
+    & 0
+\end{bmatrix}
+\begin{bmatrix}
+    x \\ w \\ u
+\end{bmatrix}
+\end{aligned}
+\]
+Where $w_1$ is the driving noise/disturbance, and $w_2$ is the observation noise. In this case $y \neq x$ as we don't know the exact feedback. \\
+We can assume again that $(A,B_2)$ is controllable, and $(A,C_1)$ is observable. We can also assume that $(A,B_1)$ is controllable, and $(A,C_2)$ is observable for this estimation/dual problem. 
+\subsubsection*{Solution}
+Let $X = X^T$ be the stabilising solution ($A-B_2B_2^TX$) is stable for the care equation \eqref{care}. Then
+\[
+\frac{1}{2 \pi} ||\mathcal{F}_I(P(s),K(s))||_2^2 = \text{trace}(B_1^TXB_1) + \frac{1}{2 \pi}|| T_{w \rightarrow \underbrace{u + B_2^TXx}_{v}}||_2^2
+\]
+But we can't make $||T_{w \rightarrow v}||_2^2 = 0$ as we can't measure x. So instead, we can take $u = -B_2^T X x_k$, where $x_k$ is the estimation of x provided by an optimal observer. The optimal K would have the realisation
+\[
+\begin{aligned}
+\begin{bmatrix}
+    \dot x_k \\ u
+\end{bmatrix}
+= 
+\begin{bmatrix}
+    A-B_2F - HC_2 & H \\ -F & 0
+\end{bmatrix}
+\begin{bmatrix}
+    x_k \\ y
+\end{bmatrix} \\ 
+F = B_2^TX, \; H = YC_2^T
+\end{aligned}
+\]
+X and Y are the stabilising solution of:
+\[
+\begin{aligned}
+    0 &= XA + A^T X + C_1^TC_1 - XB_2B_2^TX \; \textbf{(CARE)} \\
+    0 &= YA^T + AY + B_1B_1^T - YC_2^TC_2Y \; \textbf{(FARE)}
+\end{aligned}
+\]
+The optimal K would then achieve:
+\[
+\frac{1}{2 \pi} ||\mathcal{F}_I(P(s),K(s))||_2^2 =
+\underbrace{\text{trace}(B_1^TXB_1)}_{\text{state f.b.}} + \underbrace{\text{trace}(FYF^T)}_{\text{output f.b. extra}} 
+\]
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\linewidth]{Screenshot 2023-02-02 at 12.35.53.png}
+\end{figure}
+The closed loop poles of optimal K are: $\lambda_i(A-B_2F) \cup \lambda_i(A-HC_2)$, which are both stable
+\subsubsection{\texorpdfstring{$\mathcal{H}_2$}. optimal control - output feedback (derivation)}
+Note that:
+\[
+|| T_{w \rightarrow \underbrace{u + B_2^TXx}_{v}}||_2^2 = ||T_{w \rightarrow v}||_2^2 = ||\mathcal{F}_I (\tilde P,K)||_2^2
+\]
+where
+\[
+\begin{aligned}
+\tilde P &= \begin{bmatrix}
+    \dot x \\ z \\ y
+\end{bmatrix}
+ \begin{bmatrix}
+    A & \begin{bmatrix}
+        B_1 & 0
+    \end{bmatrix}
+    & 
+    B_2 \\
+    F
+    & 0 & I \\
+    C_2 & \begin{bmatrix}
+        0 & I
+    \end{bmatrix}
+    & 0
+\end{bmatrix}
+\begin{bmatrix}
+    x \\ w \\ u
+\end{bmatrix} \\ 
+F &= B_2^TX
+\end{aligned}
+\]
+From there, since we know that $||G(s)||_2 = ||G(s)^T||_2$, then:
+\[
+\begin{aligned}
+G(s) &= C(sI-A)^{-1}B + D, \\ G(s)^T &= B^T(sI-A^T)^{-1}C^T + D^T
+\end{aligned}
+\]
+This can represented in matrix form:
+\[
+G(s) = \begin{bmatrix}
+    A & B \\ C & D
+\end{bmatrix}
+\implies G(s)^T = \begin{bmatrix}
+    A^T & C^T \\ B^T & D^T
+\end{bmatrix}
+\]
+Furthermore
+\[
+\begin{aligned}
+\mathcal{F}_I(\tilde P,K)^T &= \mathcal{F}_I(\tilde P^T,K^T) \\
+(P_{11} + P_{12}K(I - P_{22}K)^{-1}P_{21})^T &= P_{11}^T + P_{21}^T(I-K^TP_{22}^T)^{-1}K^TP_{12}^T
+\end{aligned}
+\]
+Using duality
+\[
+||\mathcal{F}_I(\tilde P,K)||_2 = ||\mathcal{F}_I(\tilde P^T,K^T)||_2
+\]
+Where $\tilde P^T$ has the realisation
+\[
+\begin{bmatrix}
+     \tilde{\dot x} \\ \tilde z \\ \tilde y
+\end{bmatrix}
+ \begin{bmatrix}
+    A^T & F^T
+    & 
+    C_2^T \\
+    \begin{bmatrix}
+        B_1^T \\ 0
+    \end{bmatrix}
+    & 0 & \begin{bmatrix}
+        0 \\ I
+    \end{bmatrix} \\
+    B_2^T & I
+    & 0
+\end{bmatrix}
+\begin{bmatrix}
+    x \\ w \\ u
+\end{bmatrix}
+\]
+Note that all the variables here e.g ($\tilde x$) are fictitious, not related to original variables. \\ \\
+We can then apply state feedback results to get:
+\[
+\frac{1}{2 \pi} ||\mathcal{F}_I||_2^2 = \text{trace}(FYF^T) + \frac{1}{2 \pi} ||Y_{\tilde w \rightarrow \tilde u + C_2 Y \tilde x}||_2^2
+\]
+Where Y is the stabilising solution ($A - YC_2^TC_2$ is stable) to the Filter Algebraic Riccati Equation
+\begin{equation}\label{fare}
+    0 = YA^T + AY + B_1B_1^T - YC_2^TC_2Y
+\end{equation}
+From the earlier matrix, we know that:
+\[
+\begin{aligned}
+\tilde{\dot x} &= A^T \tilde x + F^T \tilde w + C_2^T \tilde u  \\
+\tilde y &= B_2^T \tilde x + \tilde w \\
+\tilde{\dot x}_k &= A^T \tilde x_k + F^T \underbrace{( \tilde y - B_2^T \tilde x_k)}_{\tilde w} + C_2^T \tilde u
+\end{aligned} 
+\]
+We can assume that $\tilde x_k(t) = \tilde x(t)$ for all t, so we can put that:
+\[
+\tilde u = -C_2 Y \tilde x_k = -H^T \tilde x_k
+\]
+Essentially, what we are saying is that we can measure the state at a certain time step k, and make that our desired state variables. \\
+So the optimal K would have the realisation:
+\[
+\begin{bmatrix}
+    \tilde{\dot x} k \\ u
+\end{bmatrix}
+= \begin{bmatrix}
+    A^T - F^TB_2^T - C_2^TH^T & F^T \\
+    -H^T & 0
+\end{bmatrix}
+\begin{bmatrix}
+    \tilde x_k \\ \tilde y
+\end{bmatrix}
+\]
+Then the original optimal K can be found by taking the transpose:
+\[
+\begin{bmatrix}
+    \dot x_k \\ u
+\end{bmatrix}
+= \begin{bmatrix}
+    A-B_2F - HC_2 & -H \\
+    F & 0
+\end{bmatrix}
+\begin{bmatrix}
+    x_k \\ y
+\end{bmatrix}
+\]
+Where:
+\[
+F = B_2^TX, \; H = YC_2^T
+\]
+Where X and Y are the stabilising solution of CARE \eqref{care} and FARE \eqref{fare}.
+\\
+Another possible realisation of optimal K is:
+\[
+\begin{bmatrix}
+    \dot x_k \\ u
+\end{bmatrix}
+= \begin{bmatrix}
+    A-B_2F - HC_2 & H \\
+    -F & 0
+\end{bmatrix}
+\begin{bmatrix}
+    x_k \\ y
+\end{bmatrix}
+\]
+This can be implemented in observer form.
 
 
 \end{document}
