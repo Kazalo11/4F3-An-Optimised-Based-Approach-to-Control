@@ -1,25 +1,11 @@
-name: TeX Build
-
-on: [push]
+name: Build LaTeX 
+on:
+  push:
 
 jobs:
-  build:
+  Setup-Compile-Deploy:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-
-    - name: Compile TeX file
-      uses: dante-ev/latex-action@latest
-      with:
-            root_file: main.tex
-            compiler: pdflatex
-            args: -interaction=nonstopmode -shell-escape
-      
-    - name: Upload PDF
-      uses: actions/upload-artifact@v3
-      with:
-        name: 4F3_Notes.pdf
-        path: 4F3_Notes.pdf
-    
+      - uses: DanySK/compile-and-publish-all-latex@master
+        with:
+          token: ${{ secrets.UPLOAD_TOKEN }}
