@@ -1,11 +1,12 @@
 \documentclass{article}
-\usepackage[top=4cm, bottom=3cm, left=2cm, right=2cm]{geometry}
+\usepackage[top=2.5cm, bottom=3cm, left=2cm, right=2cm]{geometry}
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
 \usepackage{nccmath}
 \usepackage{amsfonts}
 \usepackage[T1]{fontenc}
 \usepackage{makecell}
+\usepackage{mathtools}
 \usepackage{graphicx}
 \usepackage{caption}
 \usepackage{subcaption}
@@ -15,10 +16,11 @@
 \usepackage[colorlinks=true, allcolors=blue]{hyperref}
 \renewcommand\theadfont{\bfseries\sffamily}
 \usepackage{amssymb}
+\usepackage{physics}
 \newtheorem{theorem}{Theorem}[section]
 \newtheorem{corollary}{Corollary}[theorem]
 \newtheorem{lemma}[theorem]{Lemma}
-\newenvironment{aligndisplaymath}{\begin{displaymath}\begin{aligned}}{\end{aligned}\end{displaymath}}
+
 
 \title{4F3: An Optimised Based Approach to Control}
 \author{Kazal Oshodi }
@@ -28,6 +30,7 @@
 
 \maketitle
 \tableofcontents
+\pagebreak
 \section{Intro}
 \subsection{Notation}
 \begin{itemize}
@@ -1037,6 +1040,331 @@ Another possible realisation of optimal K is:
 \end{bmatrix}
 \]
 This can be implemented in observer form.
+\section{\texorpdfstring{$\mathcal{H}_\infty$}. optimal control}
+\subsection{Calculating the \texorpdfstring{$\mathcal{H}_\infty$}. norm}
+If we again consider the stable linear system G(s):
+\[
+\begin{aligned}
+    \dot x &= Ax + Bu \\
+    y &= Cx \\
+    x(0) &= 0
+\end{aligned}
+\]
+Where A has all of its eigenvalues in the left-half plane. \\
+We can calculate the $\mathcal{H}_\infty$ norm two ways:
+\[
+\begin{aligned}
+    ||G||_\infty &= \sup_{\omega} \bar \sigma(G(j\omega)) \\
+    ||G||_\infty &= \sup_{\hat u \neq 0} \frac{||G \hat u||_2}{||\hat u||_2} = \sup_{u \neq 0} \frac{\| y \|_2}{\lVert u \rVert_2}
+\end{aligned}
+\]
+Where $\hat y(s) = G(s) \hat u(s)$. \\
+We prefer to use the first interpretation for estimating $\mathcal{H}_\infty$ e.g by gridding over frequencies. For proofs, use the second definition.\\
+If we want to see if $\mathcal{H}_\infty$ norm is smaller than $\gamma > 0$:
+\[
+\begin{aligned}
+    \| G \|_\infty \leq \gamma &\iff \|y(t)\|_2 \leq \|u(t)\|_2 \text{for all $u \in \mathcal{L}_{2,[0,\infty)}$} \\ 
+    &\iff \|y(t)\|_2 - \gamma^2 \|u(t)\|^2_2 \;  \text{for all $u \in \mathcal{L}_{2,[0,\infty)}$}
+\end{aligned}
+\]
+Let $V = x^TXx$ for some $X = X^T > 0$. If we can make sure that
+\[
+\frac{dV}{dT} \leq \gamma^2 u^Tu -y^Ty
+\]
+for all $u \in \mathcal{L}_{2,[0,\infty)}$ then we would have
+\[
+\int_{0}^\infty \frac{dV}{dt}dt = \underbrace{V(\infty)}_{\rightarrow 0} - \underbrace{V(0)}_{= 0} \leq \gamma^2 ||u||^2_2 - ||y||^2_2 \implies ||y||_2 \leq \gamma ||u||_2
+\]
+We can try to satisfy this, remembering that $y = Cx$.
+\[
+\begin{aligned}
+0 \geq \dot V + y^Ty - \gamma^2 u^Tu &= \dot x^TXx + x^T X \dot x + x^TC^TCx - \gamma^2 u^Tu \\
+&= (Ax+Bu)^TXx + x^TX(Ax+Bu) + x^TC^TCx - \gamma^2 u^Tu \\
+&= \begin{bmatrix}
+    x \\ u
+\end{bmatrix}^T
+\begin{bmatrix}
+    A^TX + XA + C^TC & XB \\
+    B^TX & -\gamma^2I
+\end{bmatrix}
+\begin{bmatrix}
+    x \\ u
+\end{bmatrix}
+\end{aligned}
+\]
+Thus, we can use the Riccati equation \eqref{care} to see that
+\[
+0 \geq \max_u(\dot V + y^Ty - \gamma^2 u^Tu) = x^T(A^T X + XA + C^TC + \frac{1}{\gamma} XBB^TX)x
+\]
+Thus if the Riccati equation
+\[
+A^T X + XA + C^TC + \frac{1}{\gamma} XBB^TX = 0
+\]
+has a solution for $X = X^T > 0$ then
+\[
+||G||_\infty \leq \gamma
+\]
+To solve this, we can use a bisection algorithm to find the smallest $\lambda$ where there is a solution. 
+\begin{figure}
+    \centering
+    \includegraphics[width = 0.3\linewidth]{Screenshot 2023-02-09 at 15.38.03.png}
+    \caption{Bisection Algorithm}
+\end{figure}
+\subsection{\texorpdfstring{$\mathcal{H}_\infty$}. optimal control - output feedback}
+If we consider the plant P where we don't know the full state vector
+\[
+\begin{aligned}
+    \dot x &= Ax + B_1 w_1 + B_2 u \\
+    z &= \begin{bmatrix}
+        C_1 x \\ u
+    \end{bmatrix} \\
+    y &= C_2 x + w_2 \\
+    x(0) &= 0
+\end{aligned}
+\]
+This can be seen as:
+\[
+\begin{bmatrix}
+    \dot x \\ z \\ y
+\end{bmatrix}
+=
+\begin{bmatrix}
+    A & \begin{bmatrix}
+        B_1 & 0
+    \end{bmatrix} &
+    B_2 \\
+    \begin{bmatrix}
+        C_1 \\ 0
+    \end{bmatrix}
+    & 0
+    & \begin{bmatrix}
+        0 \\ I
+    \end{bmatrix} \\
+    C_2 & \begin{bmatrix}
+        0 & I
+    \end{bmatrix} & 
+    0 
+\end{bmatrix}
+\begin{bmatrix}
+    x \\ w \\ u
+\end{bmatrix}
+\]
+Again we assume that:
+\begin{itemize}
+    \item $A,B_2$ controllable, $A,C_1$ observable (state-feedback)
+    \item $A,B_1$ controllable, $A,C_2$ observable (estimation)
+\end{itemize}
+\subsubsection*{Objective}
+We want to find a stabilising K such that:
+\[
+||\mathcal{F_0}(P(s),K(s))||_\infty \leq \gamma
+\]
+i.e $\mathcal{F_0}(P(s),K(s))$ is stable and $||z||_2^2 \leq \gamma^2 ||w||_2^2$ for all $w \in \mathcal{L}_{2,[0,\infty)}$
+\subsubsection*{Solution}
+Let $V = x^TXx, X = X^T$. If we can ensure that:
+\[
+\dot V \leq \gamma^2 w^Tw - z^Tz
+\]
+for all $w \in \mathcal{L}_{2,[0,\infty)}$, then
+\[
+\int_0^\infty \frac{dV}{dt}dt = \underbrace{V(\infty)}_{\rightarrow 0 \; \text{if system stable}} - \underbrace{V(0)}_{=0} \leq \gamma^2 ||w||_2^2 - ||z||_2^2
+\]
+From here, can expand and isolate terms which contain input and disturbance:
+\[
+\begin{aligned}
+\dot V + z^Tz - \gamma^2 w^Tw &= x^TX \dot x + \dot x^T Xx + x^TC_1^T C_1 x + u^Tu - \gamma ^2 w^Tw  \\
+&= x^T(XA + A^TX + C_1^TC_1 - XB_2B_2^TX + \gamma^{-2}XB_1B_1^TX)x \\
+&+ (u+B_2^TXx)^T(u+B_2^TXx) - \gamma^2(w - \gamma^{-2}\begin{bmatrix}
+    B_1^T \\ 0
+\end{bmatrix}
+Xx)^T
+(w - \gamma^{-2} \begin{bmatrix}
+    B_1^T \\ 0
+\end{bmatrix} Xx)
+\end{aligned}
+\]
+If we can find an X which satisfies:
+\begin{enumerate}
+    \item $XA + A^TX + C_1^TC_1 - X(B_2B_2^T - \gamma^{-2}B_1B_1^T)X = 0$
+    \item $A-B_2B_2^TX$ stable (closed-loop A matrix) when:
+    \begin{itemize}
+        \item $u = -B_2^TXx$ 
+        \item $w = 0$ (best disturbance)
+    \end{itemize}
+    \item $A-B_2B_2^TX + \gamma^{-2} B_1B_1^TX$ is stable (closed loop A matrix) when:
+    \begin{itemize}
+        \item $u = -B_2^TXx$ (state feedback). This means that we obtain $\gamma^2 ||w||_2^2 - ||z||_2^2 \geq 0$
+        \item $w = \frac{1}{\gamma^2}\begin{bmatrix}
+            B_1^T \\ 0
+        \end{bmatrix} Xx$ (worst disturbance)
+    \end{itemize}
+\end{enumerate}
+If there exists a stabilising $K(s)$ such that $\| \mathcal{F_0}(P(s),K(s))||_\infty < \gamma$, then a solution to all of the above problems exists. \\
+Once we have that X, if we integrate from $t=0$ to $t=\infty$. then:
+\[
+||z||_2^2 - \gamma^2 ||w||_2^2 + \underbrace{x(\infty)^TXx(\infty)}_{\rightarrow 0} - \underbrace{x(0)^TXx(0)}_{=0} =  \norm \bigg{u+B_2^TXx}_2^2 - \gamma^2 \norm \bigg{w-\gamma^{-2}\begin{bmatrix}
+    B_1^T \\ 0
+\end{bmatrix} Xx}_2^2
+\]
+We have 2 possibilities:
+\subsubsection*{State Feedback}
+Choose $u =-B_2^TXx$. Hence:
+\[
+\norm{z}_2^2 = \gamma^2\norm{w}_2^2 - \underbrace{x(\infty)^TXx(\infty)}_{\rightarrow 0}  - \gamma^2 \norm \bigg{w-\gamma^{-2}\begin{bmatrix}
+    B_1^T \\ 0
+\end{bmatrix} Xx}_2^2 \leq \gamma^2 \norm{w}_2^2
+\]
+i.e $||T_{w \rightarrow z}||_\infty \leq \gamma$
+\subsubsection*{Output Feedback}
+We don't know the full state vector, so can't do the same approach. However, we still know that:
+\[
+\text{RHS} \leq 0 \iff \norm{T_{ \left \{w-\gamma^{-2}\begin{bmatrix}
+    B_1^T \\ 0
+\end{bmatrix} Xx \right \} \rightarrow \left\{u+B_2^TXx  \right \}}}_\infty \leq \gamma
+\]
+Thus:
+\[
+\norm{\mathcal{F_0}(P,K)}_\infty \iff \norm{T_{ \left \{w-\gamma^{-2}\begin{bmatrix}
+    B_1^T \\ 0
+\end{bmatrix} Xx \right \} \rightarrow \left\{u+B_2^TXx  \right \}}}_\infty \leq \gamma
+\]
+This is achieved by the controller:
+\[
+\begin{aligned}
+\begin{bmatrix}
+    \dot{\hat x} \\ u
+\end{bmatrix}
+= \begin{bmatrix}
+    \hat A - B_2F - HC_2 & H \\ -F & 0
+\end{bmatrix}
+\begin{bmatrix}
+    \hat x \\ y
+\end{bmatrix}
+\\ 
+\hat A = A + \frac{1}{\gamma^2} B_1B_1^TX, \; F = B_2^TX, \; H^T = C_2Y
+\end{aligned}
+\]
+Also we need that:
+\[
+Y \hat A^T + \hat A Y + B_1 B_1^T - Y(C_2^TC_2 - \gamma^{-2}F^T F)Y = 0
+\] \\
 
-
+i.e an observer of the plant state with the worst disturbance
+\begin{figure}[H]
+    \centering
+\includegraphics[width = 0.5\linewidth]{Screenshot 2023-02-09 at 16.27.19.png}
+\caption{Optimal Control Diagram}
+\end{figure}
+\section{Convex Optimisation/LMI for Control Design}
+\subsection{Linear Matrix Inequalities in Control}
+Consider the stable linear system G(s) with state-space realisation
+\[
+\begin{aligned}
+    \dot x &= Ax+Bu \\
+    y &= Cx
+\end{aligned}
+\]
+Then we can find the stability of the system by finding $V = x^TXx, X=X^T > 0$ such that $\dot V < 0$ for $u=0$. This implies that $V(x(t)) \rightarrow 0$ as $t \rightarrow \infty$, hence $x(t) \rightarrow 0$ as $t \rightarrow \infty$ \\
+If we want to satisfy the inequality:
+\[
+\dot V = x^T(A^TX + XA)x < 0
+\]
+which is same as finding $X=X^T > 0$ such that:
+\[
+A^TX + XA < 0
+\]
+Which is a linear matrix inequality (LMI)
+\subsubsection*{Basic Matrix Operations}
+\begin{itemize}
+    \item $Q \geq 0 \iff R^TQR \geq 0$ 
+    \item Schur's complement: $ \begin{bmatrix}
+        Q & S \\ S^T & R
+    \end{bmatrix} \geq 0 \iff R \geq 0, Q-SR^{-1}S^T \geq 0$
+\end{itemize}
+\subsection{Design of Stabilising Controllers}
+For the system:
+\[
+\dot x = Ax + Bu
+\]
+We want to find a stabilising controller
+\[
+u = Kx
+\]
+such that $X = X^T > 0$ and K such that $V = x^T X x$ satisfies $\dot V < 0$. This is equivalent to saying that:
+\[
+(A+BK)^TX + X(A+BK) \leq 0
+\]
+This is not a linear matrix due to product of X and K, so we can multiply left and right by $Y = X^{-1}$, and use that $Z = KY$ to get that:
+\[
+\begin{aligned}
+    Y(A+BK)^T + (A+BK)Y \leq 0 \\
+    YA^T + Z^TB^T + AY+BZ \leq 0
+\end{aligned}
+\]
+\subsection{\texorpdfstring{$\mathcal{H}_\infty$}. optimal control with LMI}
+Consider the system $G = T_{w \rightarrow z}$: \[
+\dot x = Ax + Bu + B_W w
+\]
+We know that $\norm{G}_\infty \leq \gamma$ if for some $X=X^T > 0, V=x^TXx$ satisfies:
+\[
+\dot V \leq -z^Tz + \gamma^2 w^Tw \iff \begin{bmatrix}
+    x \\ w
+\end{bmatrix}^T
+\begin{bmatrix}
+    A^TX + XA + C^TC & XB_W \\
+    B_W^TX & -\gamma^2 I
+\end{bmatrix}
+\begin{bmatrix}
+    x \\ w
+\end{bmatrix}
+\leq 0
+\]
+Thus, to compute $\norm{G}_\infty$, we need to find $X = X^T > 0$ and min $\gamma$ such that:
+\[
+\begin{bmatrix}
+    A^TX + XA + C^TC & XB_W \\
+    B_W^TX & -\gamma^2 I
+\end{bmatrix} \leq 0
+\]
+\subsubsection*{Computing the optimal state-feedback controller}
+For the system:
+\[
+\dot x = Ax + Bu + B_W w, \; z = Cx + Du
+\]
+Find a stabilising controller such that:
+\[
+u = Kx
+\]
+which minimises $\norm{T_{w \rightarrow z}}_\infty$. This is the same as finding $X = X^T > 0,K$ and min $\gamma$ such that:
+\[
+\begin{bmatrix}
+    (A+BK)^TX + X(A+BK) + (C+DK)^T(C+DK) & XB_W \\
+    B_W^TX & -\gamma^2 I
+\end{bmatrix} \leq 0
+\]
+To make this a LMI, we need to multiply left and right by $\begin{bmatrix}
+    Y & 0 \\ 0 & I
+\end{bmatrix}$, where $Y = X^{-1}$. We than apply Schur's complement:
+\[
+\begin{aligned}
+    \begin{bmatrix}
+        Y(A+BK)^T + (A+BK)Y + Y(C+DK)^T(C+DK)Y &B_W \\
+        B_W^T & -\gamma^2 I
+    \end{bmatrix} &\leq 0 \\
+    \begin{bmatrix}
+        Y(A+BK)^T + (A+BK)Y & Y(C+DK)^T &B_W \\
+        (C+DK)Y & -I & 0 \\
+        B_W^T &0 & -\gamma^2 I
+    \end{bmatrix} &\leq 0 
+\end{aligned}
+\]
+Then we use Z=KY to get:
+\[
+\begin{bmatrix}
+        YA^T + Z^TB^T + AY +BZ & YC^T + Z^TD^T & B_W \\
+        CY+DZ & -I & 0 \\
+        B_W^T & 0 & -\gamma^2I
+    \end{bmatrix} \leq 0 
+\]
+Solve for Y and Z, then sub back in. By construction, the state feedback $u=Kx$ will minimise $\norm{T_{w \rightarrow z}}_\infty$
 \end{document}
