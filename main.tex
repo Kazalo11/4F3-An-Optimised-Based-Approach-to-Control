@@ -1367,4 +1367,31 @@ Then we use Z=KY to get:
     \end{bmatrix} \leq 0 
 \]
 Solve for Y and Z, then sub back in. By construction, the state feedback $u=Kx$ will minimise $\norm{T_{w \rightarrow z}}_\infty$
+\section{Introduction to Predictive Control}
+With predictive control, the control input to the plant is the solution to an optimisation problem, which is computed at each discrete time step. We want to optimise some function of future state and input trajectories. \\
+All physical systems have constraints, but the optimal operating points are normally near constraints. \\
+\subsection{How does predictive control work?}
+At each sampling instant, a predictive controller:
+\begin{enumerate}
+    \item Takes a measurement of system state
+    \item Computes a set of inputs over a finite time horizon
+    \begin{enumerate}
+        \item This uses an internal model to predict state at future times
+        \item Minimises some cost function of future states and inputs
+        \item Doesn't violate any constraints on states and inputs
+    \end{enumerate}
+    \item Implements the first part of the optimal sequence, discarding the rest of it
+\end{enumerate}
+Thus, each new measurement is used to calculate a new input. Over time, the prediction horizon recedes as the finite time horizon reduces. 
+\subsection{Is this different from classical optimal control?}
+Not that different, for example if we had a linear model, quadratic costs and no constraints, then a closed form solution $u=Kx$ is possible. If we let $N \rightarrow \infty$, then it becomes a linear quadratic regulator (LQR). \\
+The differences are that:
+\begin{itemize}
+    \item Optimisation directly in the loop, in 'real time'
+    \item No need for closed-form solution
+    \item Flexible choice of cost function
+    \item Constrained optimisation
+\end{itemize}
+Note however though, there are no long term guarantees, even for stability.
+
 \end{document}
