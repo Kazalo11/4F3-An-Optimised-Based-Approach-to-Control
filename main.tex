@@ -1407,5 +1407,156 @@ The differences are that:
     \item Constrained optimisation
 \end{itemize}
 Note however though, there are no long term guarantees, even for stability.
-
+\section{Stability in Unconstrained Predictive Control}
+\subsection{Receding Horizon Principle}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{Screenshot 2023-02-20 at 11.06.33.png}
+\end{figure}
+The steps to do this are:
+\begin{enumerate}
+    \item Obtain measurement of current state x
+    \item Compute optimal finite horizon input sequence $\{ u_0^*(x), u_1^*(x),u_{N-1}^*(x)\}$
+    \item Implement first part of optimal input sequence $\kappa(x) := u_0^*(x)$
+    \item Go back to step 1
+\end{enumerate}
+We have some assumptions:
+\begin{itemize}
+    \item  we have a discrete-time system: $x(k+1) = Ax(k) + Bu(k)$
+    \item Full state feedback $(y(k) = u(k))$
+    \item No delays, noise, disturbances etc
+\end{itemize}
+We want to regulate states around the origin
+\subsubsection*{Problem}
+Given an initial state $x = x(k)$, compute a finite horizon input sequence $\textbf{u} = \{ u_0,u_1,u_{N-1}\}$ that minimises the finite horizon cost function
+\[
+\begin{aligned}
+V(x,\textbf{u}) &= x_N^TPx_N + \sum_{i=0}^{N-1}(x_i^TQx_i + u_i^TR u_i) \\
+x_0 &= x \\
+x_{i+1} &= Ax_i + Bu_i, \; i \in \{0,1,\hdots,N-1\}
+\end{aligned}
+\]
+Note that the matrices $Q,R$ are both symmetric.
+\begin{itemize}
+    \item The vector $x_i$ is the prediction of $x(k+i)$ given the current state vector $x(k)$, and the inputs $u(k+i) = u_i$ for all $i \in \{0,1,\hdots,N-1\}$. 
+    \item N is the control horizon
+    \item State weight $Q \geq 0$, and input weight $R > 0$ penalise non-zero states and inputs respectively
+    \item Q, R are often diagonal, usually $Q = C^TC$
+    \item $P \in \mathbb{R}^{n \times x}$ is the terminal weight, with $P \geq 0$
+\end{itemize}
+In this instance, we define the value function as:
+\[
+V^*(x) = \triangleq \min_{\textbf{u}} V(x,\textbf{u})
+\]
+and the optimal input sequence is:
+\[
+\begin{aligned}
+\textbf{u}^*(x) &\triangleq \text{argmin}_u V(x,\textbf{u}) \\
+&= \{ u_0^*,u_1^*,...,u_{N-1}^*\}
+\end{aligned}
+\]
+\subsection{Derivation of the unconstrained Linear Quadratic RHC Law}
+This is just a finite horizon LQR problem. In this instance, the optimal cost is given by:
+\[
+V^*(x) = x^T X_0 x
+\]
+Where $X_N=P$ and 
+\[
+X_{k-1} = Q+ A^TX_kA - A^TX_kB(R+B^TX_kB)^{-1}B^TX_kA, \; k=N,N-1,\hdots,1
+\]
+To solve this, we start in the future and work backwards to the present. The optimal solution is the state feedback:
+\[
+u_k = -(R + B^TX_{k+1}B)^{-1}B^TX_{k+1}Ax_k
+\]
+Then, the receding horizon controller is the time-invariant state feedback:
+\[
+u(k) = u_0^*(x(k)) = \underbrace{-(R+B^TX_1B)^{-1}B^TX_1Ax(k)}_{K_{RHC}}
+\]
+\subsection{Stability in receding horizon control}
+\begin{theorem}[Stability in RHC]\label{stabilityRHC}
+The origin is an asymptotically stable equilibrium point of the closed loop system:
+\[
+x(k+1) = Ax(k) + Bu_0^*(x(k))
+\]
+if the following conditions are satisfied:
+\begin{enumerate}
+    \item Q,R are positive definite
+    \item Terminal cost P is chosen that P > 0 and 
+    \[
+    (A+BK)^TP(A+BK) - P \leq -Q - K^TRK
+    \]
+    Where K is any matrix with $\rho(A+BK) < 1 \rightarrow$ the spectral radius or largest eigenvalue
+\end{enumerate}
+\end{theorem}
+Proof: If we consider the optimal input sequence:
+\[
+\textbf{u}^*(x) = \{u_0^*(x),u_1^*(x),\hdots,u_{N-1}^*(x)\}
+\]
+If at the next time step, we consider a shifted and truncated input sequence
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\linewidth]{Screenshot 2023-02-20 at 11.47.11.png}
+\end{figure}
+If we add a new ending onto the sequence $\tilde u_N = Kx^*_N$ for some K such that $\rho(A+BK) < 1$, then the sequence becomes:
+\[
+\tilde u(x) = \{u_1^*(x), u_2^*(x),\hdots,Kx^*_N(x)\}
+\]
+Then we can run the model over N+1 timesteps, with:
+\[
+x_0 = x(k), \; u_i = u_i^*(x(k)), i < N, u_N = Kx_N
+\]
+As there are no disturbances/model errors:
+\[
+x(k+1) = x_1 = Ax(k) = Bu_0^*(x(k))
+\]
+In this case, we know that the difference between the actual optimal next step $V^*(x(k+1))$, and the current optimal value function will be less or equal to the next value function based on our guess $Kx^*N$:
+\[
+\begin{aligned}
+V^*(x(k+1)) - V^*(x(k)) \leq V(x(k+1, \tilde u(x)) - V^*(x(k)) \\
+= x_{N+1}^TPx_{N+1} + \sum_{i=1}^N (x_i^TQ x_i + u_i^T R u_i) - x_N^T P x_N - \sum_{i=0}^{N-1} (x_i^TQ x_i + u_i^T R u_i) \\
+= x_N^T(A+BK)^TP(A+BK)x_N + (x_N^TQx_N + x_N^TK^TRKx_N) - x_N^TPx_N - (x_0^TQx_0 + u_0^T R u_0) \\ 
+\leq x_N^T((A+BK)^TP(A+BK) - P + Q + K^TRK)x_N - x_0^TQx_0 
+\leq -x_0^TQx_0 
+\end{aligned}
+\]
+This is using the rearranged version of the earlier inequality 2 in \eqref{stabilityRHC}:
+\[
+(A+BK)^TP(A+BK) - P +Q + K^TRK \leq 0
+\]
+Thus, we know that:
+\[
+V^*(x(k+1)) \leq V^*(x(k)) - x(k)^TQ x(k)
+\]
+But since $V^*(x) \geq x^TQx > 0$ for $x \neq 0$, then $\lim_{k \rightarrow \infty} V^*(x(k)) = 0$, and thus $\lim_{k \rightarrow \infty} x(k) = 0$. In this case, $V^*(x)$ is a Lyapunov function.
+\subsection{Using the value function as terminal cost}
+We can use a suitable choice of terminal gain K, and terminal cost, to find the optimal infinite horizon state feedback gain. \\
+If $Q = C^TC$, with $[A,C]$ detectable, let $P = X$, where $X > 0$ is the solution of the discrete time algebraic Ricatti equation \eqref{dare}:
+\[
+\begin{aligned}
+X &= Q+ A^TXA - A^TXB(R+B^TXB)^{-1}B^TXA \\
+K &= -(R+B^TXB)^{-1}B^TXA
+\end{aligned}
+\]
+This P and K solve equality 1 from \eqref{stabilityRHC}, thus the closed-loop will be stable. \\
+To minimise:
+\[
+V(x,\textbf{u}) = x_N^TPx_N + \sum_{i=0}^{N-1}(x_i^TQx_i + u_i^TR u_i)
+\]
+We can set $X_N = P$ and:
+\[
+X_{k-1} = Q + A^TX_kA - A^TX_kB(R+B^TX_kB)^{-1}B^TX_kA, \; k=N,N-1,\hdots,1
+\]
+The optimal cost is then:
+\[
+V^*(x) = x^TX_0x
+\]
+But since $X_N=P=X$ solves the algebraic Riccati equation, then we can say that $X_0 = X_1 = ... = X_N = X$, thus the solution is independent of N. Hence:
+\[
+V^*(x) = \inf_\textbf{u} x_N^TXx_N + \sum_{i=0}^{N-1} (x_i^TQx_i + u_i^TR u_i) = x^TXx
+\]
+for any N, subject to $x_0 = x, x_{i+1} = Ax_i + Bu_i$. The control is:
+\[
+u =  -(R + B^TXB)^{-1}B^TXAx
+\]
+which is optimal for any horizon length.
 \end{document}
