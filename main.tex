@@ -75,7 +75,7 @@ No analytical solution
 \min_x &f_0(x) \\ \text{s.t}  \; &f_i(x) \leq b_i, i=1,...,m \\ &h_i(x) = 0, i=1,...,p
 \end{aligned}
 \]
-In this case, both the objective function and inequality constraint functions are convex:
+In this case, both the objective function and inequality constraint functions are convex, and $h_i(x)$ is linear:
 \[
 f_i(ax + by) \leq af_i(x) + bf_i(y), \; a+b =1 \; a \geq 0, b \geq 0
 \]
@@ -1386,7 +1386,7 @@ At each sampling instant, a predictive controller:
     \end{enumerate}
     \item Implements the first part of the optimal sequence, discarding the rest of it
 \end{enumerate}
-Thus, each new measurement is used to calculate a new input. Over time, the prediction horizon recedes as the finite time horizon reduces.
+Thus, each new measurement is used to calculate a new input. Over time, the prediction horizon recedes as the finite time horizon reduces. But it is not always accurate, as at each sample time, you can see further than the previous time instant. Thus the last part of the input trajectory at the previous time instant might not be equal to the first part of the optimal input trajectory at the current time instant.
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.6\linewidth]{Screenshot 2023-02-17 at 12.38.38.png}
@@ -1470,7 +1470,7 @@ u_k = -(R + B^TX_{k+1}B)^{-1}B^TX_{k+1}Ax_k
 \]
 Then, the receding horizon controller is the time-invariant state feedback:
 \[
-u(k) = u_0^*(x(k)) = \underbrace{-(R+B^TX_1B)^{-1}B^TX_1Ax(k)}_{K_{RHC}}
+u(k) = u_0^*(x(k)) = \underbrace{-(R+B^TX_1B)^{-1}B^TX_1A}_{K_{RHC}}x(k)
 \]
 \subsection{Stability in receding horizon control}
 \begin{theorem}[Stability in RHC]\label{stabilityRHC}
