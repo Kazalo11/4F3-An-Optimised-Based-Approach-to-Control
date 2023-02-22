@@ -1528,6 +1528,7 @@ Thus, we know that:
 V^*(x(k+1)) \leq V^*(x(k)) - x(k)^TQ x(k)
 \]
 But since $V^*(x) \geq x^TQx > 0$ for $x \neq 0$, then $\lim_{k \rightarrow \infty} V^*(x(k)) = 0$, and thus $\lim_{k \rightarrow \infty} x(k) = 0$. In this case, $V^*(x)$ is a Lyapunov function.
+
 \subsection{Using the Value Function as Terminal Cost}
 We can use a suitable choice of terminal gain K, and terminal cost, to find the optimal infinite horizon state feedback gain. \\
 If $Q = C^TC$, with $[A,C]$ detectable, let $P = X$, where $X > 0$ is the solution of the discrete time algebraic Ricatti equation \eqref{dare}:
