@@ -20,8 +20,8 @@ jobs:
         uses: DanySK/compile-latex-action@0.3.107
       - name: List files in directory
         run: ls -R
-#       - name: Rename PDF file
-#         run: mv main.pdf $(date +%Y-%m-%d)-4F3.pdf
+      - name: Rename PDF file
+        run: mv 4F3.pdf $(date +%Y-%m-%d)-4F3.pdf
       - name: Deploy
         env:
           GITHUB_TOKEN: ${{ secrets.UPLOAD_TOKEN }}
