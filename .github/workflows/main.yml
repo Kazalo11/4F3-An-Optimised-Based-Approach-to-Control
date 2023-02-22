@@ -18,6 +18,8 @@ jobs:
         uses: danysk/action-checkout@0.2.5
       - name: Compile LaTeX
         uses: DanySK/compile-latex-action@0.3.107
+      - name: Rename PDF file
+        run: mv main.pdf $(date +%Y-%m-%d)-4F3.pdf
       - name: Deploy
         env:
           GITHUB_TOKEN: ${{ secrets.UPLOAD_TOKEN }}
@@ -36,7 +38,7 @@ jobs:
               echo "$TAG"
               hub release create -m  "$TAG" "$TAG" || true
               while IFS= read -r file; do
-                pdf="$(date +%Y-%m-%d)-${file%.*}.pdf"
+                pdf="${file%.*}.pdf"
                 echo "Delivering file $pdf"
                 gh release upload "$TAG" "$pdf" --clobber
               done <<< "$LATEX_SUCCESSES"
