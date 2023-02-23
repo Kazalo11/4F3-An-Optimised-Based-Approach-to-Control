@@ -20,6 +20,7 @@
 \newtheorem{theorem}{Theorem}[section]
 \newtheorem{corollary}{Corollary}[theorem]
 \newtheorem{lemma}[theorem]{Lemma}
+\usepackage[short]{optidef}
 
 
 \title{4F3: An Optimised Based Approach to Control}
@@ -1562,4 +1563,154 @@ for any N, subject to $x_0 = x, x_{i+1} = Ax_i + Bu_i$. The control is:
 u =  -(R + B^TXB)^{-1}B^TXAx
 \]
 which is optimal for any horizon length.
+\subsection{Output Feedback Predictive Control}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\linewidth]{Screenshot 2023-02-23 at 14.15.06.png}
+\end{figure}
+If $C \neq I$, then it is output feedback. For this, we use an observer to give estimates $\hat x (k|k)$. The RHC law is the same, we just replace $x(k)$ with $\hat x(k|k)$
+\section{Predictive Control with Constraints}
+In practice, our system variables are always constrained with physical limitations, or safety considerations. \\
+One common system nonlinearity is input saturation 
+\[
+\begin{aligned}
+    x(k+1) &= Ax(k) + B\text{sat}(u(k)) \\
+    y(k) &= C x(k)
+\end{aligned}
+\]
+We can turn this into a constraint on the linear system, by opposing an upper and lower bound on each element in u
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.3\linewidth]{Screenshot 2023-02-23 at 14.20.32.png}
+\end{figure}
+\subsection{Constrained LQR Problem}
+\subsubsection*{Problem(Infinite horizon with constraints)}
+Initial state x(0) at time k=0, compute and implement an input sequence $\{u(0),u(1),\hdots\}$ such that the infinite horizon cost function is minimised:
+\[
+\sum_{k=0}^{\infty}\left(x(k)^TQx(k) + u(k)^TRu(k)\right)
+\]
+Whilst ensuring that the constraints are satisfied at each time step. This equation is normally impossible to solve explicitly. We find an approximate solution using the equation:
+\[
+\inf_{u_0,u_1,\hdots,u_{N-1}} \sum_{k=0}^{N-1}\left(x_k^TQx_k + u_k^TRu_k \right) + x_N^TXx_N
+\]
+If we put a correct terminal constraint, then we can find a close to optimal solution. The RHC laws with constraints will be non-linear.
+\subsubsection{Finite Horizon}
+Given an initial state $x = x(k)$, compute a finite horizon input sequence
+\[
+\{u_0,u_1,\hdots,u_{N-1}\}
+\]
+Which minimises the finite horizon cost function
+\begin{mini*}
+	  {}{x_N^TPx_N + \sum_{i=0}^{N-1}\left(x_i^TQx_i + u_i^TRu_i \right)}{}{}
+	  \addConstraint{x_0}{=x}{}
+        \addConstraint{x_{i+1}}{=Ax_i+Bu_i \quad}{i=0,\hdots,N-1}
+        \addConstraint{M_ix_i+E_iu_i}{\leq b_i \quad}{i=0,\hdots,N-1}
+        \addConstraint{M_Nx_N}{\leq b_N \quad}{i=0,\hdots,N-1}
+    \end{mini*}
+We normally assume that $E_i=E,M_i=M,b_i=b$ for all time steps $i=0,\hdots,N-1$. If we have the input and output constraints:
+\[
+\begin{aligned}
+    u_{\text{low}} &\leq u_i \leq u_{\text{high}}, \; i=0,\hdots,N-1 \\
+    y_{\text{low}} &\leq y_i \leq y_{\text{high}}, \; i=0,\hdots,N-1
+\end{aligned}
+\]
+Since we know that $y_i = Cx_i$, then this is equal to:
+\[
+\begin{bmatrix}
+    0 \\ 0 \\ -C \\ C
+\end{bmatrix} x_i +
+\begin{bmatrix}
+    -I \\ I \\ 0 \\ 0
+\end{bmatrix}
+u_i \leq 
+\begin{bmatrix}
+    -u_{\text{low}} \\ u_{\text{high}} \\ 
+    -y_{\text{low}} \\ y_{\text{high}}
+\end{bmatrix} \; i=0,\hdots,N-1
+\]
+Thus, we can get the constraints earlier by stating that:
+\[
+\begin{aligned}
+    M_i &\triangleq \begin{bmatrix}
+        0 \\ 0 \\ -C \\ C
+    \end{bmatrix}, \; 
+    E_i \triangleq \begin{bmatrix}
+        -I \\ I \\ 0 \\ 0
+    \end{bmatrix}, \;
+    b_i \triangleq \begin{bmatrix}
+    -u_{\text{low}} \\ u_{\text{high}} \\ 
+    -y_{\text{low}} \\ y_{\text{high}}
+\end{bmatrix}, \\ M_N &\triangleq \begin{bmatrix}
+    -C \\ C
+\end{bmatrix}, \; 
+b_N \triangleq \begin{bmatrix}
+    -y_{\text{low}} \\ y_{\text{high}}
+\end{bmatrix} \;
+i=0,\hdots,N-1
+\end{aligned}
+\]
+Thus, we can combine all the constraints to get:
+\[
+\underbrace{
+\begin{bmatrix}
+    E_0 & 0 & 0 & 0 & \hdots & 0 & 0 \\
+    0 & M_1 & E_1 & 0 & \hdots & 0 & 0 \\
+    0 & 0 & 0 & M_2 & \hdots & 0 & 0 \\
+    \vdots & \vdots & \vdots & \vdots & \ddots & \vdots & \vdots \\
+    0 & 0 & 0 & 0 & \hdots & E_{N-1} & 0 \\
+    0 & 0 & 0 & 0 & \hdots & 0 & M_N
+\end{bmatrix}}_{\mathcal{G}} 
+\underbrace{
+\begin{bmatrix}
+    u_0 \\ x_1 \\ u_1 \\ x_2 \\ \vdots \\ u_{N-1} \\ x_N
+\end{bmatrix}}_{\theta}
+\leq 
+\underbrace{
+\begin{bmatrix}
+    -M_0 x(k) + b_0 \\ b_1 \\ b_2 \\ \vdots \\ b_{N-1} \\ b_N
+\end{bmatrix}
+}_{h}
+\]
+Thus, we can have the constraints $\mathcal{G} \theta \leq h$. The first element in h has $x(k)$ in it, as we state that $x(k) = x_0$, which is the starting point. \\
+We can also rewrite the cost function:
+\[
+V(x, \textbf{u}) \triangleq x_N^TPx_N + \sum_{i=0}^{N-1}\left(x_i^TQx_i + u_i^TRu_i \right)
+\]
+Which can written in matrix form as:
+\[
+V(x, \textbf{u}) = x^TQx + 
+\underbrace{\begin{bmatrix}
+    u_0 \\ x_1 \\ u_1 \\ x_2 \\ \vdots \\ u_{N-1} \\ x_N
+\end{bmatrix}^T}_{\theta}
+\underbrace{\begin{bmatrix}
+    R & 0 & 0 & 0 & \hdots & 0 & 0 \\
+    0 & Q & 0 & 0 & \hdots & 0 & 0 \\
+    0 & 0& R & 0 & \hdots & 0 & 0 \\
+    0 & 0 & 0 & Q & \hdots & 0 & 0 \\
+    \vdots & \vdots & \vdots & \vdots & \ddots & \vdots & \vdots \\
+    0 & 0 & 0 & 0 & \hdots & R & 0 \\
+    0 & 0 & 0 & 0 & \hdots & 0 & P 
+\end{bmatrix}}_{\Omega}
+\underbrace{\begin{bmatrix}
+    u_0 \\ x_1 \\ u_1 \\ x_2 \\ \vdots \\ u_{N-1} \\ x_N
+\end{bmatrix}}_{\theta}
+\]
+Which is same as saying $x^TQx + \theta^T\Omega \theta$. \\
+Finally, we can impose an equality constraint to represent the dynamics:
+\[
+\underbrace{\begin{bmatrix}
+    B & -I & 0 & 0 & \hdots & 0 & 0 \\
+    0 & A & B & I & \hdots & 0 & 0 \\
+0& 0& 0 & A & \hdots & 0 & 0 \\
+\vdots & \vdots & \vdots & \vdots & \ddots & \vdots & \vdots  \\
+0& 0& 0 & A & \hdots & B & -I
+\end{bmatrix}}_{\mathcal{A}}
+\underbrace{\begin{bmatrix}
+    u_0 \\ x_1 \\ u_1 \\ x_2 \\ \vdots \\ u_{N-1} \\ x_N
+\end{bmatrix}}_{\theta} =
+\underbrace{\begin{bmatrix}
+    -Ax(k) \\ 0 \\ 0 \\ \vdots \\ 0
+\end{bmatrix}}_{b}
+\]
+Or $\mathcal{A} \theta = b$
 \end{document}
