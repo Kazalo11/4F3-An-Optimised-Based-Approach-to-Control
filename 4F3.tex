@@ -1713,4 +1713,228 @@ Finally, we can impose an equality constraint to represent the dynamics:
 \end{bmatrix}}_{b}
 \]
 Or $\mathcal{A} \theta = b$
+\subsection{Quadratic Programming}
+\subsubsection*{Definition}
+We can define the optimisation problem as:
+\begin{mini*}
+	  {\theta}{\frac{1}{2}\theta^T Q \theta + c^T \theta}{}{}
+	  \addConstraint{A \theta}{=b}{}
+        \addConstraint{G \theta}{\leq h}{}
+    \end{mini*}
+We also know that if Q > 0, then:
+\begin{itemize}
+    \item Optimisation problem is strictly convex
+    \item Global minimiser can always be found
+    \item Global minimiser is unique
+\end{itemize}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\linewidth]{Screenshot 2023-02-28 at 14.23.43.png}
+    \caption{Example of finding the minimum}
+\end{figure}
+In this case, it becomes a linear problem, where we want to minimise the distance from the unconstrained minimum to the nearest constraint.
+\subsection{Constrained optimal control as QP}
+If we constrain the optimal control, then the problem becomes
+\begin{mini*}
+	  {\theta}{\theta^T \Omega \theta + c^T \theta}{}{}
+	  \addConstraint{\mathcal{A} \theta}{=b}{}
+        \addConstraint{\mathcal{G} \theta}{\leq h}{}
+    \end{mini*}
+In this case, the optimum solution would be a global minimum and unique when $\Omega > 0$. \\
+We also know that with constraints $\textbf{u}^*(x)$ is nonlinear, but without constraints it would be a linear function of x
+\subsection{Implementing the RHC Law}
+The RHC input is the first part of the optimal input sequence:
+\[
+\kappa_{RHC} \triangleq u_0^*(x) = \begin{bmatrix}
+    I_m & 0 & \hdots & 0 
+\end{bmatrix} \textbf{u}^*(x)
+\]
+Now, as $\textbf{u}^*(x)$ is nonlinear, then $\kappa_{RHC}: \mathbb{R}^n \rightarrow \mathbb{R}^m$ is a nonlinear control law. This has nonlinear dynamics as well, which are modelled by:
+\[
+x(k+1) = Ax(k) + B \kappa_{RHC}(x)
+\]
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\linewidth]{Screenshot 2023-02-28 at 14.32.53.png}
+\end{figure}
+\section{Feasibility and stability in constrained receding horizon control
+}
+\subsection{Recap}
+We Choose Q, R to be positive definite, then have a stabilising terminal control law $u = Kx$, i.e $\rho(A+BK) < 1$. We then find a positive definite P such that:
+\[
+(A+BK)^TP(A+BK) - P \leq -Q - K^TRK
+\]
+Then, with an initial state $x = x(k)$, we want to compute a finite horizon input sequence such that the finite horizon cost function is minimised:
+\begin{mini*}
+    {}{V(x, \textbf{u}) \triangleq x_N^TPx_N + \sum_{i=0}^{N-1} \left(x_i^T Q x_i + u_i^T R u_i \right)}{}{}
+    \addConstraint{x_0}{=x,}{i=0,\hdots,N-1}
+    \addConstraint{x_{i+1}}{=Ax_i + Bu_i, \;}{i=0,\hdots,N-1}
+    \addConstraint{Mx_i + Eu_i}{\leq b}{i=0,\hdots,N-1}
+    \addConstraint{M_N x_N}{< b_N}{}
+\end{mini*}
+Remember that:
+\begin{itemize}
+    \item Value function: $V^*(x) = \min_u V(x,\textbf{u})$
+    \item Optimal input sequence: $\textbf{u}^*(x) \triangleq \operatorname*{argmin}_u V(x,\textbf{u}) \triangleq \{ u_0^*(x),\hdots,u_{N-1}^*(x) \}$. Also, the first part of  $\textbf{u}^*(x)$ is a RHC law $\kappa_{RHC}(x) = u_0^*(x)$
+    \item We then assume that we use $u_k = Kx_k$ for k=N onwards
+    \item The terminal constraint $M_N x_N \leq b_N$ is chosen to ensure that $u=Kx$ is a feasible control policy for all future time steps
+    \item The actual input we will apply at k=N, i.e $\kappa_{RHC}(x_{k+N})$ will then do even better
+\end{itemize}
+\subsection{Set Definitions}
+\subsubsection{Invariant Set}
+An invariant set $S \subset \mathbb{R}^n$ for the system 
+\[
+x(k+1) = f(x(k))
+\]
+means that $x(0) \in S \implies f(x(k)) \in S, k \geq 0$
+\subsubsection{Constraint Admissible Set}
+Given a control law $u = \kappa(x)$, a set of states $S \subset \mathbb R^n$, and a set of constraints $Z \subset \mathbb R^n \times \mathbb R^m$, the set S is \textbf{constraint admissible} if
+\[
+(x,\kappa(x)) \in Z, \text{for all } x \in S
+\]
+In this case, $Z \triangleq \{(x,u) : Mx + Eu \leq b \}$
+\subsection{Constructing a feasible control law}
+Given a K such that $\rho(A+BK) < 1$, we can choose $M_N,b_N$ such that:
+\[
+S \triangleq \{x \in \mathbb R^n : M_N x \leq b_N \}
+\]
+is invariant for the closed loop system:
+\[
+x(k+1) = (A+BK)x(k)
+\]
+And constraint admissible for the control law $u=Kx$, and the constraint set Z. \\
+To construct the set, we can:
+\begin{enumerate}
+    \item Let $S_0 = \{ x : Mx + EKx \leq b \}$
+    \item Let $S_n = \{ x \in S_0 : (A+BK)^k x \in S_0, k=1, \hdots, n \}$
+    \item If $S_{n+1} = S_n$ for some n, then $S_n$ is invariant and constraint admissible
+\end{enumerate}
+This can be illustrated through this picture:
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\linewidth]{Screenshot 2023-02-28 at 14.59.26.png}
+\end{figure}
+\begin{theorem}[Feasibility in receding horizon control]
+    Consider the system
+    \[
+    x(k+1) = Ax(k) + Bu(k)
+    \]
+    with state, input constraints $Mx + Eu \leq b$ \\
+    If the terminal constraint $M_Nx_N \leq b_N$ is a constraint admissible set for:
+    \[
+    x(k+1) = (A+BK)x(k)
+    \]
+    for some K and constrained finite horizon control problem is feasible at time k=0, then it is feasible for all k $\geq$ 1, if the control input is given by the receding horizon control law
+    \[
+    u(k)  = u_0^*(x(k))
+    \]
+\end{theorem}
+This essentially states that if we can choose the inputs such that we end up in the set in the middle as shown in the picture above, then we can use a linear constraint to stay in that set.
+\subsubsection*{Proof}
+If we go back to the shifted input sequence $\tilde{\textbf{u}}(x)$
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\linewidth]{Screenshot 2023-02-28 at 15.11.31.png}
+\end{figure}
+If $\textbf{u}^*(x)$ is feasible at time k, then the shifted sequence $\tilde{\textbf{u}}(x)$ will be feasible at time k+1, if we implement $u(k) = u_0^*(x)$
+Remember that:
+\[
+\begin{aligned}
+M_Nx^*_N (x) \leq b_N \implies Mx_N^*(x) EK^*_N(x) &\leq b \\
+M_N(A+BK)x_N^*(x) &\leq b_N
+\end{aligned}
+\]
+\subsection{Stability of nonlinear and linear discrete-time systems}
+If we have a discrete time system:
+\[
+x(k+1) = f(x(k))
+\]
+with $f : \mathbb R^n \rightarrow \mathbb R^n$ continuous and $f(0) = 0$. 
+\subsubsection*{Definition(Stability)}
+The origin is a stable equilibrium point if, for any $\epsilon > 0$, there exists $ \delta > 0$ such that if $||x(0)|| < \delta$, then $||x(k)|| < \epsilon$ for all $k > 0$
+\subsubsection*{Definition(Asymptotic Stability)}
+The origin is asymptotically stable if $||x(k)|| \rightarrow 0$ as $k \rightarrow \infty$
+\subsubsection{Lyapunov Function for discrete time systems}
+A continuous function $V : S \rightarrow \mathbb R$ defined on a region $S \subset \mathbb R^n$ containing the origin in its interior, is called a Lyapunov function if:
+\begin{enumerate}
+    \item V(0) = 0
+    \item V(x) > 0 for all $x \in S$ with $x \neq 0$
+    \item Depending on what time:
+    \begin{itemize}
+        \item In discrete time: V(f(x)) - V(x) $\leq$ 0 for all $x \in S$
+        \item In continuous time: $\dot V(x) \leq 0$
+    \end{itemize}
+\end{enumerate}
+\subsubsection*{Proposition (Asymptotic Stability)}
+If there exists a Lyapunov function such that:
+\[
+V(f(x)) - V(x) \leq 0 \text{ for all }  x \in S, x \neq 0
+\]
+Then the origin is an asymptotically stable equilibrium point for:
+\[
+x(k+1) = f(x(k))
+\]
+with region of attraction (initial points which will converge to this point) S 
+\subsubsection*{Theorem (Stability in receding horizon control)}
+Consider the system $x(k+1) = Ax(k) + Bu(k)$ with constraints $Mx+Eu \leq b$. If we let P > 0, and K satisfy $\rho(A+BK) < 1$, and
+\[
+(A+BK)^TP(A+BK) - P \leq -Q - K^TRK
+\]
+Then, if the terminal constraint $M_Nx_N \leq b_N$ is chosen to be a constraint admissible invariant set for:
+\[
+x(k+1) = (A+BK)x(k)
+\]
+and the constrained finite horizon control problem is feasible at time k=0, then the closed loop system with the receding horizon control law
+\[
+u(k) = u_0^*(x(k))
+\]
+is asymptotically stable. \\
+This can be proved in the exact same as the unconstrained linear case
+\subsection{Constrained infinite horizon LQR problem}
+Given an initial state x(0) at time k=0, then we want to implement an input sequence:
+\[
+\{u(0),u(1),\hdots\}
+\]
+which minimises the infinite horizon cost function:
+\[
+\sum_{k=0}^{\infty} \left(x(k)^T Q x(k) + u(k)^T R u(k) \right)
+\]
+while also guaranteeing that the constraints are satisfied for all time i.e 
+\[
+Mx(k) + Eu(k) \leq b \; \forall k
+\]
+\subsubsection*{Finding an Approximate Solution}
+If we let $P \geq 0$ be the unique nonnegative solution to the \eqref{dare} DARE: \[
+P = Q + A^TPA -A^TPB(R+B^TPB)^{-1}B^TPA
+\]
+and $K = -(R+B^TPB)^{-1}B^TPA$. Then at each time step k, $x = x(k)$ and compute the finite horizon input sequence which minimises the finite horizon cost function:
+\begin{mini*}
+    {}{V(x, \textbf{u}) \triangleq x_N^TPx_N + \sum_{i=0}^{N-1} \left(x_i^T Q x_i + u_i^T R u_i \right)}{}{}
+    \addConstraint{x_0}{=x,}{i=0,\hdots,N-1}
+    \addConstraint{x_{i+1}}{=Ax_i + Bu_i, \;}{i=0,\hdots,N-1}
+    \addConstraint{Mx_i + Eu_i}{\leq b}{i=0,\hdots,N-1}
+    \addConstraint{M_N x_N}{< b_N}{}
+\end{mini*}
+Where the set $\{ x: M_N x \leq b_N \}$ is constraint admissible and invariant for the closed loop system with control law $u(k) = Kx(k)$, and apply the control $u(k) = u_0^*$
+\subsubsection*{Upper Bound}
+An upper bound for the cost function can be found by:
+\[
+\begin{aligned}
+    V_\infty^*(x) &\triangleq \sum_{i=0}^\infty x_i^TQx_i + u_i^TRu_i \\
+    s.t, \; x_0 &= x, x_{i+1} = Ax_i + Bu_i, Mx_i + Eu_i < b, \; \forall i \\
+    & \leq V^*(x) = \min_\textbf{u} \sum_{i=0}^\infty x_i^TQx_i + u_i^TRu_i \\
+    s.t, \; x_0 &= x, x_{i+1} = Ax_i + Bu_i, Mx_i + Eu_i < b, \; \forall i < N, M_Nx_N < b_N \\
+    &= \min_u \sum_{i=0}^\infty \left( x_i^TQx_i + u_i^TRu_i \right)+ x_N^T Px_N
+\end{aligned}
+\]
+As the terminal constraint means that u=Kx is optimal for N onwards.
+\\
+This gives an upper bound on true remaining cost, as the terminal cost will be at most $M_N x_N < b_N$. If we remove the lower bound however, then we get a lower bound. Thus N can be chosen to give a solution which is as close to optimal as possible. \\
+The constraint $M_N x_N < b_N$ can be enforced, by requiring that $(M+EK)x_i \leq b$ for $i=N,\hdots, N+L$ for a suitably large L.
+\subsection{Non-zero setpoints}
+\[
+\sum_{i=0}^{N-1}(y_i-y_s)^TQ(y_i-y_s) + \Delta u_i^T R \Delta u_i + (x_N - x_s)^T P (x_N - x_s)
+\]
+Where $\Delta u_i = u_i - u_{i-1}$. \\
+We can then let $y(k) -y_0 = d_0$ i.e assume error is due to disturbance. We can assume that this disturbance is constant as well.
 \end{document}
