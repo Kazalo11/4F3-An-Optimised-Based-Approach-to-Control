@@ -1703,7 +1703,7 @@ Finally, we can impose an equality constraint to represent the dynamics:
     0 & A & B & I & \hdots & 0 & 0 \\
 0& 0& 0 & A & \hdots & 0 & 0 \\
 \vdots & \vdots & \vdots & \vdots & \ddots & \vdots & \vdots  \\
-0& 0& 0 & A & \hdots & B & -I
+0& 0& 0 & 0 & \hdots & B & -I
 \end{bmatrix}}_{\mathcal{A}}
 \underbrace{\begin{bmatrix}
     u_0 \\ x_1 \\ u_1 \\ x_2 \\ \vdots \\ u_{N-1} \\ x_N
@@ -1937,4 +1937,102 @@ The constraint $M_N x_N < b_N$ can be enforced, by requiring that $(M+EK)x_i \le
 \]
 Where $\Delta u_i = u_i - u_{i-1}$. \\
 We can then let $y(k) -y_0 = d_0$ i.e assume error is due to disturbance. We can assume that this disturbance is constant as well.
+\section{RL - The Model}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.4\linewidth]{Screenshot 2023-03-03 at 12.15.53.png}
+    \caption{RL Model}
+\end{figure}
+We can define:
+\begin{itemize}
+    \item State: $s_t \in \mathcal{S}$
+    \item Action: $a_t \in \mathcal{A}$
+    \item Reward: $r_t \in \mathbb{R}$
+    \item Policy: $\Pi_t(a|s) = Pr(a_t = a | s_t = s)$ - this is a control law based on state feedback
+    \item Environment/Model: $p(s',r|s,a) = Pr(s_{k+1} = s', r_k = r| s_k = s, a_k = a)$
+    \item Aim: $\max_{a_0,a_1,\hdots} \sum_{k=0}^\infty \lambda^k r_k^2 $ - where $\lambda$ is the discount factor
+\end{itemize}
+We also have the Markov/state property:
+\[
+Pr(s_{k+1} = s', r_k = r|s_k,a_k,r_{k-1},s_{k-1},a_{k-1},\hdots) = Pr(s_{k+1} = s', r_k = r| s_k = s, a_k = a)
+\]
+We can also look at it from a control point of view - more deterministic:
+\[
+x_{k+1} = f(x_k,u_k) + \underbrace{\eta_k}_{\text{noise}}
+\]
+And the goal is:
+\[
+\min \sum_{k=0}^\infty \lambda^k c_k(x_k,u_k), \; e.g \; c_k = x_k^TQx_k + u_k^T R u_k
+\]
+For example $c_k(x_k,u_k) = -r_k$
+\section{RL - Dynamic Programming}
+\subsection{Value Iteration}
+To minimise the finite horizon cost:
+\[
+J(\underbrace{x_0}_{\text{initial condition}}, \underbrace{u_0,u_1,\hdots,u_{h-1}}_{\text{inputs}} = \sum_{k=0}^{h-1} \underbrace{\lambda^k c(x_k,u_k)}_{\text{stage cost}} + \underbrace{J_h(x_h)}_{\text{terminal cost}}
+\]
+We can define the optimal cost to go/value function:
+\[
+V(x,k) \triangleq \min_{u_k,\hdots,u_{h-1}}\left(\sum_{i=k}^{h-1} \lambda^{k-i} c(x_i,u_i) + J_h(x_k)\right)
+\]
+The optimal cost and control can be found by solving the Dynamic programming equation \eqref{dp1}:
+\[
+V(x,k) = \min_u (c(x,u) + V(f(x,u),k+1)), \; k=h-1,h-2,...1,0
+\]
+With a final/terminal condition:
+\[
+V(x,h) = J_h(x)
+\]
+This can also be applied to infinite horizon problems, with a cost function:
+\[
+J(x_0) = \sum_{k=0}^\infty \lambda^k c(x_k,u_k)
+\]
+Normally $\lambda \leq 1$. For when $\lambda =1$, these are called episodic problems. This are finite horizon problems where the finishing time is not specified, but there is a stopping set $X_s$ which has the property that for all $x \in X_s$ there exists a u that:
+\begin{enumerate}
+    \item $f(x,u) \in X_s$
+    \item $c(x,u) = 0$
+\end{enumerate}
+Thus there is a finite cost for all initial states which can be brought to $X_s$ in finite time.
+\\
+\subsubsection*{Rewards}
+We can also think about maximising a discount sums of rewards $r(s,a)$ by choosing actions a. This then becomes:
+\[
+V(s) = \max_a (r(s,a) + \lambda V(f(s,a)))
+\]
+There is no time dependence for this, so the Bellman optimality condition is:
+\[
+V(x) = \min_u (c(x,u) + \lambda V(f(x,u)))
+\]
+Which can also be solved by value iteration:
+\[
+V_{k+1}(x) = \min_u (c(x,u) + \lambda V_k(f(x,u)))
+\]
+This will converge for any initial guess $V_0(x)$, provided that $\lambda < 1$, or for $\lambda = 1$, there is a reachable stopping set and no cycles with negative cost. \\
+In the episodic $\lambda = 1$, we will use an initial guess:
+\[
+V_0(x) = \begin{cases}
+    0 & \text{for } x \in X_s \\
+    \infty & \text{otherwise}
+\end{cases}
+\]
+Over time, the $\infty$ will be replaced by 0 as they get into the stopping set, similar to Dijkstra algorithm.
+\subsection{Policy Iteration}
+For a policy $\pi ( \cdot) u = \pi(x)$ - state feedback law - we let:
+\[
+V^\pi(x) = c(x,\pi(x)) + \lambda V^\pi(f(x,\pi(x)))
+\]
+be the value of the policy at state x. This is the limit of:
+\[
+V_{k+1}^\pi(x) = c(x,\pi(x)) + \lambda V_k^\pi(f(x,\pi(x)))
+\]
+Hence the steps become:
+\begin{enumerate}
+    \item Initialise policy $\pi$
+    \item Compute value of policy $V^\pi$
+    \item Update $\pi$ to be the greedy policy with respect to $V^\pi$
+    \[
+    \mathop{\arg \min}\limits_{u} \left( \lambda V^\pi (f(x,u)) + c(x,u) \right)
+    \]
+    \item Stop if policy has converged, or go to step 2
+\end{enumerate}
 \end{document}
