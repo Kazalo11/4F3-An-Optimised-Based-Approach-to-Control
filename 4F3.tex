@@ -2028,11 +2028,124 @@ V_{k+1}^\pi(x) = c(x,\pi(x)) + \lambda V_k^\pi(f(x,\pi(x)))
 Hence the steps become:
 \begin{enumerate}
     \item Initialise policy $\pi$
-    \item Compute value of policy $V^\pi$
+    \item \label{pi2} Compute value of policy $V^\pi$, by iterating the above equation to convergence.
     \item Update $\pi$ to be the greedy policy with respect to $V^\pi$
     \[
     \mathop{\arg \min}\limits_{u} \left( \lambda V^\pi (f(x,u)) + c(x,u) \right)
     \]
-    \item Stop if policy has converged, or go to step 2
+    \item Stop if policy has converged i.e the policy before is the same as the policy after, or go to step 2
 \end{enumerate}
+\subsection{Generalised Policy Iteration}
+For generalised policy iteration, we would do \eqref{pi2} for a k number of times, which should give a good approximation. This can be illustrated in the picture below:
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.2\linewidth]{Screenshot 2023-03-06 at 11.31.16.png}
+\end{figure}
+\subsection{Markov Decision Process}
+In the fully stochastic case, with rewards, then the value function for a stochastic policy (probability distribution over actions and states) will satisfy:
+\[
+V^\pi(s) = \underbrace{\sum_a \pi (a|s)}_{E_a} \underbrace{\sum_{s' \in \mathcal{S}} \sum_{r \in \mathcal{R}} p(s', r|s,a)(r + \lambda V^\pi(s'))}_{E(r + \lambda V^\pi (s'))}
+\]
+The optimal function would then satisfy:
+\[
+V(s) = \max_a \sum_{s' \in \mathcal{S}} \sum_{r \in \mathcal{R}} p(s', r|s,a)(r + \lambda V^\pi(s'))
+\]
+Which can be found using value or policy iteration as before.
+\section{Learning from samples}
+We can also learn the value function from samples s(k),a(k),r(k),s(k+1). But then we would need to know both the model and reward function. \\
+Instead, we can use the action-value function Q(s,a), which is defined as:
+\[ 
+\begin{aligned}
+Q(s,a) &= r(s,a) + \lambda V(f(s,a)) \\
+&= \sum_{s' \in \mathcal{S}} \sum_{r \in \mathcal{R}} p(s', r|s,a)(r + \lambda V^\pi(s'))
+\end{aligned}
+\]
+i.e Q is the total reward of using action a now, and the optimal a thereafter. Thus, we can write Q as:
+\[
+Q(s,a) = \mathbb E(r + \lambda V(s'))
+\]
+Where it is understood that the expectation is taken over $r,s' \sim 
+ p(s',r|s,a)$ and for the deterministic case:
+\[
+p(s',r|s,a) = \begin{cases}
+1 & s'=f(s,a),r = r(s,a) \\
+0 & \text{otherwise}
+\end{cases}
+\]
+From Q, it is easy to get the value function at each step, since:
+\[
+V(s) = \max_a Q(s,a)
+\]
+So Q satisfies the recursion:
+\[
+Q(s,a) = \mathbb E(r + \lambda \max_b Q(s',b))
+\]
+and the optimal action $a^*(s)$ can be recovered from Q:
+\[
+a^*(s) = \text{arg} \max_a Q(s,a)
+\]
+\subsection{Monte Carlo Methods}
+If we have an episodic problem $\lambda = 1$, and a given policy $\pi$ then we can find the value function of that policy $V^\pi$ by Monte Carlo methods. This is done by repeating these steps:
+\begin{enumerate}
+    \item Choose a random starting point $s_0$, then simulate a trajectory $a_0 = \pi(s_0), r_0, s_1 \sim p(s_1,r_0|s_0,a_0), a_1 = \pi(s_1),r_1, s_2 \sim p(s_2,r_1 |s_1,a_1)$.  \\
+    In essence:
+    $a_i = \pi(s_i),r_i,s_{i+1} \sim p(s_{i+1}, r_i | s_i,a_i)$ which is repeated until $s_n \in X_s$
+    \item Then we sum up the rewards. This can be done by having $R_n = r_n, R_k = r_k + \lambda R_{k+1}, k=n-1, \hdots, 0$
+    \item Now we set:
+    \[
+    \begin{aligned}
+    V(s_k) &\rightarrow \frac{N(s_k) -1}{N(s_k)} V(s_k) + \frac{1}{N(s_k)} R_k \\
+    V(s_k) &\rightarrow V(s_k) + \frac{1}{N(s_k)} (R_k - V(s_k))
+    \end{aligned}
+    \]
+    for $k=0,\hdots,n$, where N(s) is the total number of times that s has been visited, either as a starting state or during the run. The second equation results in $V(s_k)$ being set to the average of all sample returns
+\end{enumerate}
+This is guaranteed to converge to the correct value. The policy $\pi$ can then be improved to the greedy policy with respect to this value i.e
+\[
+\pi'(s) = \max_a \mathbb E(r + \lambda V(s')) = \text{arg} \max_a \sum_{s',r} p(s',r|s,a) r + \lambda V(s')
+\]
+This policy is guaranteed to not be worse than the previous, due to the policy improvement theorem. \\
+\subsubsection*{Policy Improvement Theorem}
+Given two deterministic policies $\pi$ and $\pi'$, if:
+\[
+\sum_{s',r} p(s',r|s,\pi'(s)) (r + \lambda V^\pi(s')) \geq V^\pi(s) \; \forall s
+\]
+then $V^{\pi'}(s) \geq V^\pi (s) \; \forall s$ i.e policy $\pi'$ does as well or better than $\pi$. If the policy improvement step does not increase V somewhere i,e $V^\pi(s) = V^{\pi'}(s)$ at all points, then the process has converged to the optimal policy.  
+\subsubsection*{Monte Carlo Exploring Starts}
+This Monte Carlo approach above is slow to converge as many samples are needed for each policy, there might be many changes to each policy, and each choice requires transition probabilities. Instead, we can use MCES which uses the Q function, and the greedy policy for the current estimate of Q. This is done by repeating:
+\begin{enumerate}
+     \item Choose a random starting point $s_0$, then simulate a trajectory $a_0 = \pi(s_0), r_0, s_1 \sim p(s_1,r_0|s_0,a_0), a_1 = \pi(s_1),r_1, s_2 \sim p(s_2,r_1 |s_1,a_1)$.  \\
+    In essence:
+    $a_i = \pi(s_i),r_i,s_{i+1} \sim p(s_{i+1}, r_i | s_i,a_i)$ which is repeated until $s_n \in X_s$
+    \item Then we sum up the rewards. This can be done by having $R_n = r_n, R_k = r_k + \lambda R_{k+1}, k=n-1, \hdots, 0$
+    \item Now we set:
+    \[
+    \begin{aligned}
+    Q(s_k,a_k) &\rightarrow \frac{N(s_k,a_k) -1}{N(s_k,a_k)} Q(s_k,a_k) + \frac{1}{N(s_k,a_k)}R_k \\
+    Q(s_k,a_k) &\rightarrow Q(s_k,a_k) + \frac{1}{N(s_k,a_k)} (R_k - Q(s_k,a_k))     
+    \end{aligned}
+    \]
+    for $k=0, \hdots,n$, where $N(s,a)$ is the overall total number of times that a state action pair s,a has been visited, either in the starting state or subsequent run.
+\end{enumerate}
+\subsection{Temporal Difference Methods}
+These differ from Monte-Carlo methods, as instead of updating after a complete trajectory has been sampled, they update for each sample.
+\subsubsection{Q-Learning}
+For this, we take samples s,a,r,s' and update:
+\[
+Q_{k+1}(s,a) = (1- \alpha_k)Q_k(s,a) + \alpha_k(r + \lambda \max_b Q_k(s',b))
+\]
+This will converge when $Q(s,a) = r + \lambda \max_b Q(s',b)$. In this case $\alpha$ is the learning rate. \\
+This will converge as long as:
+\begin{itemize}
+    \item Each state/action is visited infinitely often (or a lot)
+    \item $\sum \alpha_k = \infty, \sum \alpha_k^2 < \infty$. That means that $\alpha$ needs to be decreased gradually to 0, but not too gradually. For example $\alpha = c/k$
+\end{itemize}
+Q-learning is an off-policy method, i.e it learns the value of optimal policy whilst sampling using any policy. One example is the $\epsilon$-greedy policy:
+\[
+\pi(s) = \begin{cases}
+    \text{arg max } Q(s,a), & \text{with probability 1- $\epsilon$} \\
+    \text{randomly selected,} & \text{with probability $\epsilon$}
+\end{cases}
+\]
+We can also choose the state action pairs randomly. Through recursion, the samples will be joined up into optimal trajectories. If the deterministic case is active, then $\alpha_k = 1$, but convergence is still guaranteed.
 \end{document}
