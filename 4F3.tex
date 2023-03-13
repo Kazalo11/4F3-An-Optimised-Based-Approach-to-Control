@@ -2148,4 +2148,64 @@ Q-learning is an off-policy method, i.e it learns the value of optimal policy wh
 \end{cases}
 \]
 We can also choose the state action pairs randomly. Through recursion, the samples will be joined up into optimal trajectories. If the deterministic case is active, then $\alpha_k = 1$, but convergence is still guaranteed.
+\subsubsection{State-Action-Reward-State-Action (SARSA)}
+SARSA is an on-policy method, where we assume that future actions will be chosen according to the current policy. This updates by:
+\[
+Q_{k+1}^\pi(s,a) = (1-\alpha_k)Q_k^\pi(s,a) + \alpha_k(r + \lambda Q_k^\pi(s',\pi(s')))
+\]
+This will converge to an optimal policy and action-value function if all state-action pairs and visited an infinite number of times, and the policy converges in the limit to the greedy policy. This can be done using an $\epsilon$-greedy policy with $\epsilon \rightarrow 0$.
+\subsection{Deep Q-Learning}
+We can use deep Q-learning for more complex problems, where we can have a functional approximation $Q_\theta (s,a)$. This can be done using a deep neural net.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\linewidth]{Screenshot 2023-03-13 at 11.31.27.png}
+\end{figure}
+We then adjust $\theta$ to minimise
+\[
+L(\theta) = \mathbb E(y_k - Q_\theta(x_k,a_k))^2
+\]
+where we freeze the targets $y_k$:
+\[
+y_k = c_k + \lambda \min_a Q_\theta(x_{k+1},a)
+\]
+Thus
+\[
+L(\theta) \approx \hat L(\theta) = \frac{1}{N} \sum_{k=1}^N(y_k - Q_\theta(x_k,a_k))^2
+\]
+The gradient $d \hat L/d\theta$ can be calculated using back propagation:
+\[
+\frac{d \hat L}{d \theta_{st2}} = \frac{2}{N} \sum_k(y_k - Q_\theta(x_k,a_k)) \frac{d Q_\theta(x_k,a_k)}{d \theta_{st2}}
+\]
+Where 
+\[
+\frac{d Q_\theta(x,a)}{d \theta_{st2}} = \theta_{as3} \frac{d0_{s2}}{d \theta_{st2}} = \theta_{as3}f'o_{t1}
+\]
+Then $\theta$ is updated in the direction $-d \hat L/d \theta$. This will become more difficult over time, as more experience is gained. \\
+In reality, we store the agent experiences as a quartet $e_k = (x_k,a_k,c_k,x_{k+1})$, which are contained in a replay buffer $D = \{e_{k-M},e_{k-M+1},\hdots,e_{k-1},e_k\}$,of the last M experiences. We can then take a minibatch of N quartets from that replay buffer D, and train the model on that, then repeat the process. This is called \textbf{stochastic gradient descent}\\
+We don't need more than M experience, since we are using an off-policy method, so our earlier policies might not be as accurate.  \\
+Over time, new experiences are gained and added to the replay buffer. We can also use a $\epsilon$-greedy policy for this, which can work as Q-learning is an off-policy method, but it can be unstable.
+\subsection{Actor-Critic Method}
+We use this for continuous action spaces. A second neural network $\Pi_w$ is used to represent the policy - actor. The critic is the Q network. \\
+Thus, the loss function for the critic is:
+\[
+L_Q(\theta) = E(y_k - Q_\theta(x_k,u_k))^2
+\]
+But now, 
+\[
+y_k = c_k + \lambda Q_\theta(x_{k+1},\pi_w(x_{k+1}))
+\]
+Now, we need a second objective loss function for the actor to minimise:
+\[
+L_\pi(w) = E_xQ_\theta(x,\pi_w(x))
+\]
+with respect to the weights. 
+\\
+Normally, the expectation in loss function should be taken over all the state distribution under the policy $\pi_w$, but the data gathered is normally using an exploratory policy which will have probably changed over time. \\
+Thus instead, we minimise the expected Q over the data we have seen. \\
+For a fixed $\theta$, the gradient of $L_\pi$ can be evaluated using the chain rule, then approximated as:
+\[
+\frac{dL_\pi}{dw} \approx \frac{1}{N} \sum_k \frac{dQ_\theta(x,u)}{du}\Bigg |_{x=x_k,u=\pi(x_k)} \cdot 
+\frac{d \pi(x)}{dw}\Bigg |_{x=x_k}
+\]
+This is an example of a using a Deep Determinstic Policy Gradient.
 \end{document}
